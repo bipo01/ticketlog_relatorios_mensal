@@ -74,8 +74,6 @@ fileInput.addEventListener("input", (e) => {
     const header = json.slice(0, 1);
     const body = json.slice(1, -1);
 
-    console.log(body);
-
     const viaturas = [
       ...new Set(
         body
@@ -103,35 +101,51 @@ fileInput.addEventListener("input", (e) => {
       currency: "BRL",
     });
 
-    /*
-
     const checarDuplicatasArr = [];
     body.forEach((row) => {
-      const obj = {
-        id: row[0],
-        placa: row[5],
-        km: row[16],
-      };
-      checarDuplicatasArr.push(obj);
-    });
-
-    const duplicatas = [];
-
-    const checarDuplicatas = checarDuplicatasArr.filter((row, i, arr) => {
-      const { placa, km } = row;
-      const existemDuplicatas = arr.filter(
-        (row1) => row1.placa === placa && row1.km === km
-      );
-      if (existemDuplicatas.length > 1) {
-        duplicatas.push(existemDuplicatas);
+      // Garante que os campos não são nulos/undefined antes de criar o objeto
+      if (row[5] && row[16]) {
+        const obj = {
+          id: row[0],
+          placa: row[5], // Coluna F
+          km: row[16], // Coluna Q
+        };
+        checarDuplicatasArr.push(obj);
       }
     });
 
-    const duplicatasSet = [...new Set(duplicatas)];
+    // ⭐️ CORREÇÃO: Usando Map para agrupar ocorrências por chave única (placa + km)
+    const contagemOcorrencias = new Map();
+
+    checarDuplicatasArr.forEach((item) => {
+      // Chave única para identificar a transação (placa e km)
+      const chave = `${item.placa}_${item.km}`;
+
+      // Se a chave já existe, adiciona o item ao array existente; caso contrário, inicializa o array.
+      if (contagemOcorrencias.has(chave)) {
+        contagemOcorrencias.get(chave).push(item);
+      } else {
+        contagemOcorrencias.set(chave, [item]);
+      }
+    });
+
+    // Filtra o mapa para obter apenas os grupos com mais de uma ocorrência (duplicatas reais)
+    const gruposDuplicados = [];
+    for (const grupo of contagemOcorrencias.values()) {
+      // Se o grupo tiver mais de 1 elemento, é uma duplicata
+      if (grupo.length > 1) {
+        gruposDuplicados.push(grupo);
+      }
+    }
+
+    // Substitua a variável 'duplicatas' para manter a compatibilidade com o restante do seu código
+    const duplicatas = gruposDuplicados;
+
+    // A variável 'duplicatas' agora contém um array de arrays, onde cada array aninhado
+    // é um grupo único de registros duplicados (Ex: [[objA1, objA2], [objB1, objB2, objB3]])
 
     console.log(duplicatas);
-    */
-
+    // ... o restante da sua lógica continua usando a variável 'duplicatas'
     if (document.querySelector("table")) {
       document.querySelector("table").remove();
     }
@@ -158,6 +172,41 @@ fileInput.addEventListener("input", (e) => {
     <td><h1>Quantidade de Abastecimentos</h1></td>
     <td><h1>${body.length}</h1></td>
   </tr>
+  
+  <tr>
+    <td colspan="2" style="background-color: #f7e0e0;">
+      <h1 style="color: #c72c2c;">REGISTROS DUPLICADOS (${
+        duplicatas.length
+      })</h1>
+    </td>
+  </tr>
+  
+  ${
+    // Itera sobre o array duplicatas.
+    // O array 'duplicatas' contém grupos de objetos que são duplicados.
+    // Cada 'arr' dentro de 'duplicatas' é um array de objetos repetidos (Ex: [obj1, obj2]).
+    duplicatas.length
+      ? duplicatas
+          .map((arr) => {
+            // Garante que o arr seja um array e tenha pelo menos 2 elementos (a duplicata).
+            if (Array.isArray(arr) && arr.length >= 2) {
+              // Pega as placas e KMs para o cabeçalho do grupo
+              const placaKm = `${arr[0].placa} | KM: ${arr[0].km}`;
+
+              // Mapeia os IDs (primeira coluna) e o campo da placa/KM (segunda coluna)
+              const idList = arr.map((item) => `${item.id}`).join(" | ");
+
+              return `
+    <tr>
+        <td><h1>${placaKm}</h1></td>
+        <td><p style="font-size: 0.9em;">${idList}</p></td>
+    </tr>`;
+            }
+            return ""; // Retorna string vazia se o formato não for o esperado
+          })
+          .join("") // Junta todos os resultados mapeados em uma string
+      : '<tr><td colspan="2">Nenhuma duplicata encontrada (Placa e KM)</td></tr>'
+  }
 </table>
 `;
 
